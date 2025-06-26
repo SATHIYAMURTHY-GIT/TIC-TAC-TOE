@@ -199,12 +199,16 @@
     const winGifs = [
       "https://media.giphy.com/media/BPJmthQ3YRwD6QqcVD/giphy.gif",
       "https://media.giphy.com/media/3oz9ZE2Oo9zRC/giphy.gif",
-      "https://media.giphy.com/media/QTMIptG0CMG4bDnnW3/giphy.gif"
+      "https://media.giphy.com/media/QTMIptG0CMG4bDnnW3/giphy.gif",
+      "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdWV1aWIxdDRuYThtMXZzN2hubHM0cWEwZWpvcWI5dWh6YnA0MWVxdCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/ihUvVdebxogZ393lvg/giphy.gif",
+      "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExczN5MXN6cngxOHB0bjJ0NThzMDJsaHIyY2N6Zm05cWNsOHRpbjhnbCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/nIKvczbHe1G4ivXrH9/giphy.gif"
     ];
     const drawGifs = [
       "https://media.giphy.com/media/xT9DPIlGnuHpr2yObu/giphy.gif",
       "https://media.giphy.com/media/Gt5O7fq5meXnO/giphy.gif",
-      "https://media.giphy.com/media/IU7YhPcG95BIw5EYlk/giphy.gif"
+      "https://media.giphy.com/media/IU7YhPcG95BIw5EYlk/giphy.gif",
+      "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbTFwcThkY3g2d3ptaTJiZW1pMWFoYjRya2Nscm5kcXRmOXI4Z2JreSZlcD12MV9naWZzX3NlYXJjaCZjdD1n/bcrOR2stk6tKIxqPOZ/giphy.gif",  
+      "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNjJrd2drNjhlMXE5aGRybmQzaGg0bDBuN2ZrbXFyc2lkc3J1MXVpdCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/LNuT7f53PfOYqVsIFy/giphy.gif "
     ];
 
     let currentPlayer = "X";
@@ -219,9 +223,11 @@
         const cell = document.createElement("div");
         cell.classList.add("cell");
         cell.setAttribute("data-index", i);
-        cell.addEventListener("click", handleCellClick);
         board.appendChild(cell);
       }
+      Array.from(board.children).forEach(cell => {
+        cell.addEventListener("click", handleCellClick);
+      });
     }
 
     function handleCellClick(e) {
@@ -230,13 +236,17 @@
       makeMove(index, currentPlayer);
       if (vsBot && gameActive) {
         botTurn = true;
-        setTimeout(botMove, 500);
+        setTimeout(() => {
+          currentPlayer = "O";
+          botMove();
+          currentPlayer = "X";
+        }, 500);
       }
     }
 
     function makeMove(index, player) {
       gameState[index] = player;
-      board.children[index].innerHTML = player === "X" ? "✖️" : "⭕";
+      board.children[index].innerHTML = player === "X" ? "❌" : "⭕";
       if (checkWinner()) {
         statusText.textContent = `Player ${player} wins!`;
         gameActive = false;
@@ -254,19 +264,75 @@
     }
 
     function botMove() {
-      const emptyCells = gameState.map((val, i) => val === "" ? i : null).filter(v => v !== null);
-      const index = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-      makeMove(index, currentPlayer);
+      const index = getBestMove();
+      makeMove(index, "O");
       botTurn = false;
     }
 
-    function checkWinner() {
+    function getBestMove() {
+      let bestScore = -Infinity;
+      let move;
+      for (let i = 0; i < 9; i++) {
+        if (gameState[i] === "") {
+          gameState[i] = "O";
+          const score = minimax(gameState, 0, false);
+          gameState[i] = "";
+          if (score > bestScore) {
+            bestScore = score;
+            move = i;
+          }
+        }
+      }
+      return move;
+    }
+
+    function minimax(board, depth, isMaximizing) {
+      const scores = { X: -1, O: 1, tie: 0 };
+      const winner = checkWinnerFull(board);
+      if (winner !== null) return scores[winner];
+
+      if (isMaximizing) {
+        let bestScore = -Infinity;
+        for (let i = 0; i < 9; i++) {
+          if (board[i] === "") {
+            board[i] = "O";
+            let score = minimax(board, depth + 1, false);
+            board[i] = "";
+            bestScore = Math.max(score, bestScore);
+          }
+        }
+        return bestScore;
+      } else {
+        let bestScore = Infinity;
+        for (let i = 0; i < 9; i++) {
+          if (board[i] === "") {
+            board[i] = "X";
+            let score = minimax(board, depth + 1, true);
+            board[i] = "";
+            bestScore = Math.min(score, bestScore);
+          }
+        }
+        return bestScore;
+      }
+    }
+
+    function checkWinnerFull(state) {
       const wins = [
         [0,1,2], [3,4,5], [6,7,8],
         [0,3,6], [1,4,7], [2,5,8],
         [0,4,8], [2,4,6]
       ];
-      return wins.some(([a, b, c]) => gameState[a] && gameState[a] === gameState[b] && gameState[a] === gameState[c]);
+      for (let [a,b,c] of wins) {
+        if (state[a] && state[a] === state[b] && state[a] === state[c]) {
+          return state[a];
+        }
+      }
+      if (!state.includes("")) return "tie";
+      return null;
+    }
+
+    function checkWinner() {
+      return checkWinnerFull(gameState);
     }
 
     function showGif(result) {
@@ -307,3 +373,4 @@
   </script>
 </body>
 </html>
+ 
